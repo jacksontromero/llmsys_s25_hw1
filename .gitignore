@@ -6,3 +6,6 @@ __pycache__/
 
 # hide .vscode
 .vscode/
+
+# hide .so files
+*.so
