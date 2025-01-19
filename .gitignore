@@ -1,0 +1,8 @@
+# hide __pycache__
+__pycache__/
+
+# hide .pytest_cache
+.pytest_cache/
+
+# hide .vscode
+.vscode/
