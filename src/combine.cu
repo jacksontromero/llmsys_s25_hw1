@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <cuda/std/array>
 
 #define BLOCK_DIM 1024
 #define MAX_DIMS 10
@@ -361,7 +362,26 @@ __global__ void reduceKernel(
     // 4. Iterate over the reduce_dim dimension of the input array to compute the reduced value
     // 5. Write the reduced value to out memory
 
-    assert(false && "Not Implemented");
+    int out_ord = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (out_ord < out_size) {
+      to_index(out_ord, out_shape, out_index, shape_size);
+      cuda::std::array<int, MAX_DIMS> a_index = out_index;
+
+      float val = reduce_value;
+
+      for (int i = 0; i < a_shape[reduce_dim]; i++) {
+        a_index[reduce_dim] = i;
+        int a_pos = index_to_position(a_index, a_strides, shape_size);
+
+        val = fn(fn_id, val, a_storage[a_pos]);
+      }
+
+      int out_pos = index_to_position(out_index, out_strides, shape_size);
+
+      out[out_pos] = val;
+    }
+
     /// END ASSIGN1_2
 }
 
