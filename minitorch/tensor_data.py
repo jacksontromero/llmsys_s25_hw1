@@ -19,6 +19,7 @@ class IndexingError(RuntimeError):
     "Exception raised for indexing errors."
     pass
 
+
 datatype = np.float32
 
 Storage: TypeAlias = npt.NDArray[datatype]
@@ -206,7 +207,7 @@ class TensorData:
         shape = self.shape
         if len(shape) == 0 and len(aindex) != 0:
             shape = (1,)
-            
+
         # Check for errors
         if aindex.shape[0] != len(self.shape):
             raise IndexingError(f"Index {aindex} must be size of {self.shape}.")
@@ -265,7 +266,7 @@ class TensorData:
             l = ""
             for i in range(len(index) - 1, -1, -1):
                 if index[i] == 0:
-                    l = "\n%s[" % ("\t" * i) + l
+                    l = "%s[" % ("\t" * i) + l
                 else:
                     break
             s += l

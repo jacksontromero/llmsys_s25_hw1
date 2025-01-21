@@ -145,10 +145,11 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     while len(queue) > 0:
         v, d = queue.pop()
 
-        if v.is_leaf() and not v.is_constant():
-            v.accumulate_derivative(d)
-
-        queue.extend(v.chain_rule(d))
+        if not v.is_constant():
+            if v.is_leaf():
+                v.accumulate_derivative(d)
+            else:
+                queue.extend(v.chain_rule(d))
 
     # raise NotImplementedError("Task Autodiff Not Implemented Yet")
     # END ASSIGN1_1
