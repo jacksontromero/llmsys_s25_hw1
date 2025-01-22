@@ -5,6 +5,7 @@ import embeddings
 
 import sys
 
+from minitorch import tensor
 from minitorch.nn import dropout
 from minitorch.tensor import Tensor
 
@@ -217,6 +218,14 @@ class SentenceSentimentTrain:
                 # 4. Calculate the loss using Binary Crossentropy Loss
                 # 5. Call backward function of the loss
                 # 6. Use Optimizer to take a gradient step
+
+                # print("x", X_train[batch_num])
+                # x = tensor(X_train[batch_num][example_num], backend=BACKEND, requires_grad=True)
+                # y = tensor(y_train[batch_num][example_num], backed=BACKEND, requires_grad=True)
+
+                # out = self.model.forward(x)
+
+                # loss =
 
                 raise NotImplementedError
                 # END ASSIGN1_4
