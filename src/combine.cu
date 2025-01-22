@@ -6,7 +6,7 @@
 
 #define BLOCK_DIM 1024
 #define MAX_DIMS 10
-#define TILE 32
+#define TILE 4
 
 #define ADD_FUNC       1
 #define MUL_FUNC       2
@@ -225,13 +225,18 @@ __global__ void MatrixMultiplyKernel(
     // In each block, we will compute a batch of the output matrix
     // All the threads in the block will work together to compute this batch
     int batch = blockIdx.z;
-    int a_batch_stride = a_shape[0] > 1 ? a_strides[0] : 0;
-    int b_batch_stride = b_shape[0] > 1 ? b_strides[0] : 0;
 
+    // int a_batch_stride = a_shape[0] > 1 ? a_strides[0] : 0;
+    // int b_batch_stride = b_shape[0] > 1 ? b_strides[0] : 0;
+    // int batch_size = a_shape[0];
+
+    int m = a_shape[1];
+    int n = b_shape[1];
+    int p = b_shape[2];
 
     /// BEGIN ASSIGN1_2
     /// TODO
-    // Hints:
+    // Hints:1
     // 1. Compute the row and column of the output matrix this block will compute
     // 2. Compute the position in the output array that this thread will write to
     // 3. Iterate over tiles of the two input matrices, read the data into shared memory
@@ -240,7 +245,49 @@ __global__ void MatrixMultiplyKernel(
     // 6. Synchronize to make sure all threads are done computing the output tile for (row, col)
     // 7. Write the output to global memory
 
-    assert(false && "Not Implemented");
+    int out_row = blockIdx.x * blockDim.x + threadIdx.x;
+    int out_col = blockIdx.y * blockDim.y + threadIdx.y;
+    int out_idx[3] = {batch, out_row, out_col};
+    int out_pos = index_to_position(out_idx, out_strides, 3);
+
+    int thread_row = threadIdx.x;
+    int thread_col = threadIdx.y;
+
+
+
+    // printf("Thread (%d, %d, %d) is calculating output (%d, %d) at idx %d\n", thread_row, thread_col, blockIdx.y, out_row, out_col, out_pos);
+
+    float out_val = 0;
+
+    for (int phase = 0; phase < ceil(n / (float)TILE); ++phase) {
+      if (thread_row < m && phase*TILE + thread_col < n) {
+        int a_idx[3] = {batch, thread_row, phase*TILE + thread_col};
+        int a_pos = index_to_position(a_idx, a_strides, 3);
+        a_shared[thread_row][thread_col] = a_storage[a_pos];
+        printf("Thread (%d, %d, %d) set a_shared=%.4f\n", thread_row, thread_col, blockIdx.y, a_storage[a_pos]);
+      }
+
+      if (phase*TILE + thread_row < n && thread_col < p) {
+        int b_idx[3] = {batch, phase*TILE + thread_row, thread_col};
+        int b_pos = index_to_position(b_idx, b_strides, 3);
+        b_shared[thread_row][thread_col] = b_storage[b_pos];
+        printf("Thread (%d, %d, %d) set b_shared=%.4f\n", thread_row, thread_col, blockIdx.y, b_storage[b_pos]);
+      }
+
+      __syncthreads();
+
+      for (int k = 0; k < TILE; ++k) {
+        out_val += a_shared[thread_row][k] * b_shared[k][thread_col];
+      }
+
+      __syncthreads();
+    }
+
+    if (out_row < m && out_col < p) {
+      printf("Setting output (%d, %d) = %.4f\n", out_row, out_col, out_val);
+      out[out_pos] = out_val;
+    }
+
     /// END ASSIGN1_2
 }
 
@@ -505,7 +552,7 @@ void MatrixMultiply(
     cudaMemcpy(d_b_shape, b_shape, 3 * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_b_strides, b_strides, 3 * sizeof(int), cudaMemcpyHostToDevice);
 
-    int threadsPerBlock = 32;
+    int threadsPerBlock = TILE;
     dim3 blockDims(threadsPerBlock, threadsPerBlock, 1); // Adjust these values based on your specific requirements
     dim3 gridDims((m + threadsPerBlock - 1) / threadsPerBlock, (p + threadsPerBlock - 1) / threadsPerBlock, batch);
     MatrixMultiplyKernel<<<gridDims, blockDims>>>(
