@@ -6,7 +6,7 @@
 
 #define BLOCK_DIM 1024
 #define MAX_DIMS 10
-#define TILE 4
+#define TILE 8
 
 #define ADD_FUNC       1
 #define MUL_FUNC       2
@@ -253,25 +253,27 @@ __global__ void MatrixMultiplyKernel(
     int thread_row = threadIdx.x;
     int thread_col = threadIdx.y;
 
-
-
     // printf("Thread (%d, %d, %d) is calculating output (%d, %d) at idx %d\n", thread_row, thread_col, blockIdx.y, out_row, out_col, out_pos);
 
     float out_val = 0;
 
     for (int phase = 0; phase < ceil(n / (float)TILE); ++phase) {
-      if (thread_row < m && phase*TILE + thread_col < n) {
-        int a_idx[3] = {batch, thread_row, phase*TILE + thread_col};
+      if (out_row < m && phase*TILE + thread_col < n) {
+        int a_idx[3] = {batch, out_row, phase*TILE + thread_col};
         int a_pos = index_to_position(a_idx, a_strides, 3);
         a_shared[thread_row][thread_col] = a_storage[a_pos];
-        printf("Thread (%d, %d, %d) set a_shared=%.4f\n", thread_row, thread_col, blockIdx.y, a_storage[a_pos]);
+        // printf("Thread (%d, %d, %d) set a_shared=%.4f\n", thread_row, thread_col, blockIdx.y, a_storage[a_pos]);
+      } else {
+        a_shared[thread_row][thread_col] = 0;
       }
 
-      if (phase*TILE + thread_row < n && thread_col < p) {
-        int b_idx[3] = {batch, phase*TILE + thread_row, thread_col};
+      if (phase*TILE + thread_row < n && out_col < p) {
+        int b_idx[3] = {batch, phase*TILE + thread_row, out_col};
         int b_pos = index_to_position(b_idx, b_strides, 3);
         b_shared[thread_row][thread_col] = b_storage[b_pos];
-        printf("Thread (%d, %d, %d) set b_shared=%.4f\n", thread_row, thread_col, blockIdx.y, b_storage[b_pos]);
+        // printf("Thread (%d, %d, %d) set b_shared=%.4f\n", thread_row, thread_col, blockIdx.y, b_storage[b_pos]);
+      } else {
+        b_shared[thread_row][thread_col] = 0;
       }
 
       __syncthreads();
@@ -284,7 +286,7 @@ __global__ void MatrixMultiplyKernel(
     }
 
     if (out_row < m && out_col < p) {
-      printf("Setting output (%d, %d) = %.4f\n", out_row, out_col, out_val);
+      // printf("Setting output (%d, %d) = %.4f\n", out_row, out_col, out_val);
       out[out_pos] = out_val;
     }
 
