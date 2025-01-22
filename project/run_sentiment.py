@@ -5,6 +5,7 @@ import embeddings
 
 import sys
 
+from minitorch.nn import dropout
 from minitorch.tensor import Tensor
 
 sys.path.append("../")
@@ -44,7 +45,7 @@ class Linear(minitorch.Module):
 
         # END ASSIGN1_3
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
 
         batch, in_size = x.shape
 
@@ -93,13 +94,17 @@ class Network(minitorch.Module):
         # TODO
         # 1. Construct two linear layers: the first one is embedding_dim * hidden_dim, the second one is hidden_dim * 1
 
-        raise NotImplementedError
+        self.first_layer = Linear(embedding_dim, hidden_dim)
+        self.second_layer = Linear(hidden_dim, 1)
+
         # END ASSIGN1_3
 
-    def forward(self, embeddings):
+    def forward(self, embeddings: Tensor):
         """
         embeddings tensor: [batch x sentence length x embedding dim]
         """
+
+        batch_size, sentence_length, embedding_dim = embeddings.shape
 
         # BEGIN ASSIGN1_3
         # TODO
@@ -110,7 +115,15 @@ class Network(minitorch.Module):
         # 5. Apply sigmoid and reshape to (batch)
         # HINT: You can use minitorch.dropout for dropout, and minitorch.tensor.relu for ReLU
 
-        raise NotImplementedError
+        averaged = embeddings.mean(dim=1).view(batch_size, embedding_dim)
+        res = self.first_layer.forward(averaged)
+        res = res.relu()
+        res = dropout(res, self.dropout_prob)
+        res = self.second_layer.forward(res)
+        res = res.sigmoid()
+        res = res.view(batch_size)
+
+        return res
 
         # END ASSIGN1_3
 
