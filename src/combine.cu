@@ -3,7 +3,6 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <cuda/std/array>
 
 #define BLOCK_DIM 1024
 #define MAX_DIMS 10
@@ -296,14 +295,14 @@ __global__ void mapKernel(
 
     int out_ord = blockIdx.x * blockDim.x + threadIdx.x;
 
+
     if (out_ord < out_size) {
       to_index(out_ord, out_shape, out_index, shape_size);
       broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
 
       int in_pos = index_to_position(in_index, in_strides, shape_size);
-      int out_pos = index_to_position(out_index, out_strides, shape_size);
 
-      out[out_pos] = fn(fn_id, in_storage[in_pos]);
+      out[out_ord] = fn(fn_id, in_storage[in_pos]);
     }
 
     /// END ASSIGN1_2
@@ -353,6 +352,7 @@ __global__ void reduceKernel(
 
     // __shared__ double cache[BLOCK_DIM]; // Uncomment this line if you want to use shared memory to store partial results
     int out_index[MAX_DIMS];
+    int a_index[MAX_DIMS];
 
     /// BEGIN ASSIGN1_2
     /// TODO
@@ -364,9 +364,12 @@ __global__ void reduceKernel(
 
     int out_ord = blockIdx.x * blockDim.x + threadIdx.x;
 
+
     if (out_ord < out_size) {
       to_index(out_ord, out_shape, out_index, shape_size);
-      cuda::std::array<int, MAX_DIMS> a_index = out_index;
+      for (int i = 0; i < MAX_DIMS; i++) {
+        a_index[i] = out_index[i];
+      }
 
       float val = reduce_value;
 
@@ -377,9 +380,7 @@ __global__ void reduceKernel(
         val = fn(fn_id, val, a_storage[a_pos]);
       }
 
-      int out_pos = index_to_position(out_index, out_strides, shape_size);
-
-      out[out_pos] = val;
+      out[out_ord] = val;
     }
 
     /// END ASSIGN1_2
@@ -454,11 +455,10 @@ __global__ void zipKernel(
       broadcast_index(out_index, out_shape, a_shape, a_index, out_shape_size, a_shape_size);
       broadcast_index(out_index, out_shape, b_shape, b_index, out_shape_size, b_shape_size);
 
-      int out_pos = index_to_position(out_index, out_strides, out_shape_size);
       int a_pos = index_to_position(a_index, a_strides, a_shape_size);
       int b_pos = index_to_position(b_index, b_strides, b_shape_size);
 
-      out[out_pos] = fn(fn_id, a_storage[a_pos], b_storage[b_pos]);
+      out[out_ord] = fn(fn_id, a_storage[a_pos], b_storage[b_pos]);
     }
 
     /// END ASSIGN1_2

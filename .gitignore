@@ -9,3 +9,6 @@ __pycache__/
 
 # hide .so files
 *.so
+
+# hide .hypothesis
+.hypothesis/
