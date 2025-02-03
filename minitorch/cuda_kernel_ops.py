@@ -1,3 +1,5 @@
+import pycuda.autoinit
+
 from typing import Callable, Optional
 
 from . import operators
@@ -12,7 +14,6 @@ import numpy as np
 import pycuda.gpuarray as gpuarray
 import pycuda.driver as drv
 from pycuda.compiler import SourceModule
-import pycuda.autoinit
 
 # Load the shared library
 try:

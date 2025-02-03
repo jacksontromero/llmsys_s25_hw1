@@ -5,6 +5,8 @@ import embeddings
 
 import sys
 
+from hypothesis import example
+
 from minitorch import tensor
 from minitorch.nn import dropout
 from minitorch.tensor import Tensor
@@ -40,8 +42,8 @@ class Linear(minitorch.Module):
         # 3. Set self.out_size to be out_size
         # HINT: make sure to use the RParam function
 
-        self.weights = RParam(in_size, out_size).value
-        self.bias = RParam(out_size).value
+        self.weights = RParam(in_size, out_size)
+        self.bias = RParam(out_size)
         self.out_size = out_size
 
         # END ASSIGN1_3
@@ -59,9 +61,9 @@ class Linear(minitorch.Module):
         # HINT: You can use the view function of minitorch.tensor for reshape
 
         x: Tensor = x.view(batch, in_size)
-        W = self.weights.view(in_size, self.out_size)
+        W = self.weights.value.view(in_size, self.out_size)
         res = (x @ W).view(batch, self.out_size)
-        res += self.bias
+        res += self.bias.value
 
         return res
 
@@ -219,15 +221,28 @@ class SentenceSentimentTrain:
                 # 5. Call backward function of the loss
                 # 6. Use Optimizer to take a gradient step
 
-                # print("x", X_train[batch_num])
-                # x = tensor(X_train[batch_num][example_num], backend=BACKEND, requires_grad=True)
-                # y = tensor(y_train[batch_num][example_num], backed=BACKEND, requires_grad=True)
+                optim.zero_grad()
 
-                # out = self.model.forward(x)
+                x = tensor(
+                    X_train[example_num : example_num + batch_size],
+                    backend=BACKEND,
+                    requires_grad=True,
+                )
+                y = tensor(
+                    y_train[example_num : example_num + batch_size],
+                    backend=BACKEND,
+                    requires_grad=True,
+                )
 
-                # loss =
+                out = self.model.forward(x)
 
-                raise NotImplementedError
+                loss: Tensor = -1 * (y * out.log() + (-y + 1) * (-out + 1).log()).mean()
+
+                # print(loss)
+
+                loss.backward()
+                optim.step()
+
                 # END ASSIGN1_4
 
                 # Save training results
@@ -238,7 +253,7 @@ class SentenceSentimentTrain:
             # Evaluate on validation set at the end of the epoch
             validation_predictions = []
             if data_val is not None:
-                (X_val, y_val) = data_val
+                (X_val, Y_val) = data_val
                 model.eval()
 
                 # BEGIN ASSIGN1_4
@@ -248,7 +263,22 @@ class SentenceSentimentTrain:
                 # 3. Obtain validation predictions using the get_predictions_array function, and add to the validation_predictions list
                 # 4. Obtain the validation accuracy using the get_accuracy function, and add to the validation_accuracy list
 
-                raise NotImplementedError
+                x = tensor(
+                    X_val,
+                    backend=BACKEND,
+                    requires_grad=False,
+                )
+                y = tensor(
+                    Y_val,
+                    backend=BACKEND,
+                    requires_grad=False,
+                )
+
+                out = self.model.forward(x)
+
+                preds = get_predictions_array(y, out)
+                validation_predictions += preds
+                validation_accuracy.append(get_accuracy(preds))
 
                 # END ASSIGN1_4
 
@@ -323,8 +353,8 @@ def encode_sentiment_data(dataset, pretrained_embeddings, N_train, N_val=0):
 if __name__ == "__main__":
     train_size = 450
     validation_size = 100
-    learning_rate = 0.25
-    max_epochs = 250
+    learning_rate = 0.1
+    max_epochs = 50
     embedding_dim = 50
 
     (X_train, y_train), (X_val, y_val) = encode_sentiment_data(

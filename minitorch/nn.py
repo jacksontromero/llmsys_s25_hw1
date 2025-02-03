@@ -1,10 +1,12 @@
 from typing import Tuple
+from uu import Error
 
 from . import operators
 from .autodiff import Context
 from .tensor import Tensor
 from .tensor_functions import Function, rand, tensor
 import numpy as np
+
 
 def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     """
@@ -49,11 +51,12 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
 
 try:
     from minitorch.cuda_kernel_ops import CudaKernelOps
+
     max_reduce = CudaKernelOps.reduce(operators.max, -1e9)
-except:
+except Exception as e:
+    print("EXCEPTION: ", e)
     raise NotImplementedError("Reduce Function Not Implemented Yet")
     print("cuda kernels not implemented: combine.so not found")
-
 
 
 def argmax(input: Tensor, dim: int) -> Tensor:
@@ -87,7 +90,7 @@ class Max(Function):
         input, out = ctx.saved_values
         return (out == input) * grad_output, 0.0
 
-        
+
 def max(input: Tensor, dim: int) -> Tensor:
     return Max.apply(input, input._ensure_tensor(dim))
 
@@ -180,12 +183,12 @@ def layer_norm(input: Tensor, eps: float = 1e-5) -> Tensor:
     Returns:
         tensor with random positions dropped out
     """
-    
+
     # Calculate mean and variance along the last axis (features)
     batch, channel, height, width = input.shape
-    
+
     mean = input.mean(dim=4).view(batch, channel, height, width)
     variance = input.var(dim=4).view(batch, channel, height, width)
-    
+
     input_normalized = (input - mean) / (variance + eps)
     return input_normalized
